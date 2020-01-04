@@ -240,6 +240,180 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://github.com/yzh1996/yzh1996.github.io.git/2020/01/04/HDFS%20/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="剑侠舞逍遥">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/1.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2020/01/04/HDFS%20/" itemprop="url">HDFS </a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2020-01-04T19:36:34+08:00">
+                2020-01-04
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <h2 id="一-Hadoop"><a href="#一-Hadoop" class="headerlink" title="一.Hadoop"></a>一.Hadoop</h2><p>hadoop定义：</p>
+<p>hadopp框架包括以下四个模块：<br>1.Hadoop Common:</p>
+<p>2.HDFS:分布式文件系统，拿来管理存储大数据（实际的数据是存在机器的硬盘上），可以访问某个文件的具体哪些块，但是删除时只能整个文件的删除，不能对块做处理</p>
+<p>3.Hadoop MapReduce:用来对大数据进行处理，一个处理系统</p>
+<p>4.Hadoop YARN：资源调度</p>
+<p>在分布式存储中，有的机器拿来存数据（称为datanode），有的机器用来对什么数据存到哪台机器的信息做记录（Namenode简称NN）。</p>
+<h3 id="（1）HDFS分布式文件系统"><a href="#（1）HDFS分布式文件系统" class="headerlink" title="（1）HDFS分布式文件系统"></a>（1）HDFS分布式文件系统</h3><h5 id="1-安全模式"><a href="#1-安全模式" class="headerlink" title="1.安全模式"></a>1.安全模式</h5><p>namenode里面存放的元数据主要存储着以下的文件属性：<br>【1】文件A存放在 哪个目录下，文件大小等</p>
+<p>【2】block 块的存放信息   ,如block1存放在node1和node2节点上</p>
+<p>block1   node1  node2</p>
+<p>但是当namenode关机启动时，有可能有的节点就打不开了，或者说就挂掉了，此时如果说元数据上还存放了block块的存放信息的话那就会造成客户端访问数据时，namenode告诉客户端数据在哪，但是客户端却找不到的问题。大数据存储需要保证数据的一致性。</p>
+<p>为此HDFS有这样一个机制，namenode不会永久性保存block块的存储信息，当再次打开namenode时</p>
+<p>block1  <del>node1</del> <del>node2</del>   中node1 node2就没有了  ，需要等待node1,node2节点，向namenode发送信息，告诉它我还活着，这样block1的存储信息才会恢复。这就是HDFS的一个安全机制，重启后不会有block的存储信息，需要等待所有节点反馈自身的存储信息给namenode后，客户端才能操作。</p>
+<h5 id="2-SecondNameNode："><a href="#2-SecondNameNode：" class="headerlink" title="2.SecondNameNode："></a>2.SecondNameNode：</h5><p>作用：用来对fsimage和editlog日志文件的合并，冷备份，SNN是SecondNameNode的简称后文都用SNN</p>
+<p>namenode的数据都是放在内存当中，所以当发生断电等事件时，内存中的数据就没了，所以为了<strong>保证namenode的数据的持久性，通常有两种方法：</strong></p>
+<p>1.使用日志文件：该日志文件（editlog）记录了对namenode元数据的所有操作，所以当namenode挂掉时，只需要按照日志文件上的操作步骤跑一遍，就可以恢复。</p>
+<p>缺点：加载恢复数据慢、当时间久了editlog会越来越大，占用空间大（原因见PS段文字）</p>
+<p>2.使用镜像.快照.等，也就是把内存中namenode的状态备份保存到硬盘中(就是fsimage)，可以设置成每隔一天或一个小时就获取namenode的最新状态保存。</p>
+<p>缺点：无法实时保存，存在数据丢失的问题。比如说你设置的间隔是1个小时，而在这1个小时内，namenode挂掉了，那么你此时只能恢复到1个小时前的状态，而在这1个小时内做的操作是没法恢复的。为此你可能觉得 可以把间隔设置成很小比如1S，但是受io流的读取速度限制，假如namenode的内存数据是1G，而io流的最高读取速度只有500M/s，此时你前1S的数据都还没读完就又得读下一1秒的内存数据这很显然是不行的</p>
+<p>PS：假设要在电脑上存储99999999这个数</p>
+<p>a.如果以文本文档存储，一个9站一个字节，所以99999999占8个字节</p>
+<p>b.如果以二进制字节文件存储，就是int a = 99999999这种，占4个字节</p>
+<p>二进制文件加载是比文本文档快的，而且从上面也可以看出来二进制文件存储所需的空间也是更少的</p>
+<p><strong>SecondNameNode的工作流程：</strong>HDFS系统为了保证namenode数据的持久性将上述的方法综合使用，首先当你打开NN时，它会有一个fsimage和一个editlog文件，SecondNameNode会将fsimage这个文件拷贝过来保存到硬盘(SNN和NN一般不在同一台机器)，SNN会间隔性的去找NN更新数据，这里间隔设置为1个小时，NN八点开机，那么在九点时，SNN就会把NN上的editlog拷贝过来并且把fsimage一起加载至内存进行合并，这里的合并也就是把fsimage上的元数据按照editlog中记录的操作再执行一遍，此时fsimage就是9点的状态，然后SNN再把这个9点状态的fsimage发送给NN并且在硬盘上保存一份，此时NN上就会有一份9点状态的fsimage和一份空的editlog（系统会自动产生新的空的editlog把之前的清除），以后再更新时只需要将editlog拷贝过来就行了，因为SNN上的硬盘上已经有fsimage了</p>
+<p><strong>注：</strong>8点的fsimage不一定就会被删掉，可以保存多个时间点的记录，9点状态的fsimage要从SNN上拷贝到NN上是因为 客户端要访问数据的话需要知道数据在哪，而这些信息都是存放在fsimage上的。</p>
+<h5 id="3-副本放置策略："><a href="#3-副本放置策略：" class="headerlink" title="3.副本放置策略："></a>3.副本放置策略：</h5>
+
+<p>三角形是客户端，圆脸是副本，红色横线是datanode节点，绿色是交换机，每个机架都会有个交换机，管理本机架内机器的通信，机架与机架之间再用一个交换机通信，副本放置策略有一个距离问题，这里的距离指的是从客户端访问数据所经过的交换机，副本放置要求就近原则，比如说放在本节点最近因为本节点和副本通信不需要经过交换机，放在同机架的不同节点经过一个交换机就为第2近。</p>
+<p>如果是三个副本的，假设本机在1号机架上，那么1号副本就放在1号机架本机上，2号副本就放在其他机架的机器上（如3号机架3号机子），第三个副本就放在3号机架除3号机器的其他机子上。</p>
+<p>3个以上副本的，前三个按照前面的要求，第四个开始随机。</p>
+<h5 id="4-写入过程"><a href="#4-写入过程" class="headerlink" title="4.写入过程"></a>4.写入过程</h5><p>假如客户端要上传一个文件生成3个副本，上传的过程如下：</p>
+<p>【1】客户端与namenode建立连接，请求创建元数据（即客户端要在根目录下创建一个a.txt文件，这个就是元数据）,NN判断元数据是否有效（如果根目录下已有a.txt文件则无效，无则有效）</p>
+<p>【2】NN触发副本放置策略，返回一个DN序列，如下图所示，距离最近的节点（datanode）在前</p>
+<p>【3】客户端会和返回的节点建立pipeline（管道连接）传输数据，这里传输数据是按packet（包）来传，每次从block中读取512字节的数据，并生成4个字节大小的校验码，然后放进包里，当包的大小到达64KB时开始传输</p>
+<p>【4】客户端先把包传给第一个节点，传完之后，第一个节点再把包复制给第2个节点，同理第2个节点再复制给第三个节点，此过程中客户端也同时在把第2个填充好的包传给第一个节点，再第一个传给第2个节点。。。。。直至完成整个block块的传输。    </p>
+<p>【5】完成第一个block的传输后，各个节点会向namenode汇报block块的存储信息，同时此过程中第2个block的传输也在进行中，重复以上过程直至整个文件的传输完成</p>
+
+
+
+
+<p>======================</p>
+<p><strong>PS:</strong></p>
+<p><strong>1.如果在传输的过程中，有namenode挂掉了怎么办？</strong></p>
+<p>假如是上图最左边的那个节点挂了，那么客户端就会和第2个节点建立连接传输</p>
+<p>假如是中间的节点挂了，那么第一个节点就会和第三个节点建立连接传输</p>
+<p>假如是最后一个节点挂了，都不用管。其实节点挂了并不用担心，因为datanode有心跳机制，会周期性的向namenode报告自己的存储情况，那么在datanode完成block的存储向namenode汇报时，namenode就会发现少了副本，那么它就会再在其他空间上复制一份副本补全</p>
+<p><strong>2.为什么要采用包这种传输方式，而不直接对块进行传输</strong>？</p>
+<p>你现在对block直接传输，假设传输完成需要1S，那么从客户端到1号节点需要1S，1号到2号节点需要1S，2号节点到3号节点需要1S，那么为了生成3个副本，你总共需要花费3S的时间，而你用包的方式传输，那么你只需要大概1S多一点的时间，因为采用包的传输方式，客户端在向1号节点传输2号包的时候，1号节点就已经可以向2号节点传输，2号也可以向3号节点传输，这样就不必等整个blcok都传完了才能进行后续的传输，可以同时进行几个节点的传输，相当于并行。</p>
+<p>思想有点类似通信中手机需要监听有谁给它打电话的过程，如果说手机要一直监听谁给它打了电话，它就要认真一直竖起耳朵听，但是别人打电话给你只是在某一时刻的事情，为此这样就会很累，它就想能不能偷懒，比如说在前30分钟监听，后30钟休息，但是这样监听到电话的概率只有1/2，但是假如你把这个时间缩小，1S中有0.5S监听，0.5S休息，那么在一个小时中它就确实有30分钟是没工作的，但确又达到了1个小时都在监听的效果。</p>
+<h5 id="5-读取过程"><a href="#5-读取过程" class="headerlink" title="5.读取过程"></a>5.读取过程</h5><p>当客户端要从HDFS中读取一个文件时，步骤如下：</p>
+<p>【1】首先还是要和namenode交互，从中得知我要的这个文件它分别分成哪些块存储在哪些机器上</p>
+<p>【2】之后namenode会向客户端返回存储信息，假如这个文件是由三个块block1,2,3组成的，有三个副本,那么namenode会把block1,2,3块的三个副本分别按照距离排序，客户端从最近的获取。</p>
+<p>【3】每个block块都是有校验码的，客户端获取到block块后会进行校验，如果块信息有缺失则会校验失败，否则直接拼接三个块完成对文件的读取</p>
+<p>注：客户端可以从知道每个块的偏置信息，块的存储位置，也就是说客户端就想要某个文件中的某一块的信息也是可以的，这样当要对这个文件进行某一计算操作时，就可以把计算程序分成三份分别对三个块进行同时计算操作。（待思考）</p>
+
+
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="https://github.com/yzh1996/yzh1996.github.io.git/2020/01/01/%E6%88%91%E7%9A%84%E6%B5%8B%E8%AF%95%E5%8D%9A%E5%AE%A2/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -580,7 +754,7 @@
               
                 <a href="/archives/%20%7C%7C%20archive">
               
-                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-count">3</span>
                   <span class="site-state-item-name">posts</span>
                 </a>
               </div>
